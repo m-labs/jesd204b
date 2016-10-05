@@ -1,9 +1,9 @@
 import unittest
 import random
 
-from litex.gen import *
+from migen import *
 
-from litejesd204b.phy import line_coding
+from jesd204b.phy import line_coding
 
 from test.model.line_coding import Control, encode_lanes
 

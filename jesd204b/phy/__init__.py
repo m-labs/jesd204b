@@ -1,10 +1,10 @@
-from litex.gen import *
+from migen import *
 
-from litejesd204b.common import *
-from litejesd204b.phy.gtx import GTXTransmitter
+from jesd204b.common import *
+from jesd204b.phy.gtx import GTXTransmitter
 
 
-class LiteJESD204BPhyTX(Module):
+class JESD204BPhyTX(Module):
     def __init__(self, refclk_pads_or_signal, refclk_freq, tx_pads,
             linerate, sys_clk_freq, n=0):
         self.data = Signal(32)

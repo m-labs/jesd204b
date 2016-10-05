@@ -1,8 +1,8 @@
-from litex.gen import *
-from litex.gen.genlib.resetsync import AsyncResetSynchronizer
+from migen import *
+from migen.genlib.resetsync import AsyncResetSynchronizer
 
-from litejesd204b.phy.gtx_init import GTXInit
-from litejesd204b.phy.line_coding import Encoder
+from jesd204b.phy.gtx_init import GTXInit
+from jesd204b.phy.line_coding import Encoder
 
 
 cpll_min_freq = 1.6*1e9

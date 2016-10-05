@@ -1,10 +1,10 @@
 import unittest
 import random
 
-from litex.gen import *
+from migen import *
 
-from litejesd204b.link import link_layout
-from litejesd204b.link import Scrambler, Framer, AlignInserter
+from jesd204b.link import link_layout
+from jesd204b.link import Scrambler, Framer, AlignInserter
 
 from test.model.common import Control
 from test.model.link import scramble_lanes

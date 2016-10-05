@@ -1,8 +1,8 @@
 from collections import namedtuple
 
-from litex.gen import *
+from migen import *
 
-from litejesd204b.common import control_characters
+from jesd204b.common import control_characters
 
 
 Control = namedtuple("Control", "value")
@@ -228,7 +228,7 @@ class ILASGenerator(Module):
             )
 
 
-class LiteJESD204BLinkTX(Module):
+class JESD204BLinkTX(Module):
     """Link TX layer
     """
     def __init__(self, data_width, jesd_settings):

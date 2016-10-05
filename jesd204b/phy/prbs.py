@@ -1,7 +1,7 @@
 from operator import xor, add
 from functools import reduce
 
-from litex.gen import *
+from migen import *
 
 @ResetInserter()
 class PRBSGenerator(Module):

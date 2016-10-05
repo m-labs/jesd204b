@@ -1,11 +1,11 @@
 import unittest
 
-from litex.gen import *
+from migen import *
 
 from test.model.common import swap_bytes
 
-from litejesd204b.common import *
-from litejesd204b.link import ILASGenerator
+from jesd204b.common import *
+from jesd204b.link import ILASGenerator
 
 # ilas reference sequence from a validated core
 ilas_reference = [

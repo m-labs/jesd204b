@@ -10,14 +10,14 @@ if sys.version_info[:3] < (3, 3):
 
 
 setup(
-    name="litejesd204b",
+    name="jesd204b",
     version="0.1",
     description="small footprint and configurable JESD204B core",
     long_description=open("README").read(),
     author="Florent Kermarrec",
     author_email="florent@enjoy-digital.fr",
     url="http://enjoy-digital.fr",
-    download_url="https://github.com/enjoy-digital/litejesd204b",
+    download_url="https://github.com/m-labs/jesd204",
     test_suite="test",
     license="BSD",
     platforms=["Any"],

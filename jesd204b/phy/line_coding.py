@@ -1,6 +1,6 @@
 # only K.28.y control symbols are supported
 
-from litex.gen import *
+from migen import *
 
 
 def disparity(word, nbits):

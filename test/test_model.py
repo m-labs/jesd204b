@@ -1,6 +1,6 @@
 import unittest
 
-from litejesd204b.common import *
+from jesd204b.common import *
 
 from test.model.common import seed_to_data
 

@@ -1,9 +1,9 @@
 from math import ceil
 
-from litex.gen import *
+from migen import *
 
 
-class LiteJESD204BTransportTX(Module):
+class JESD204BTransportTX(Module):
     """Transport Tx layer
     inputs:
     - jesd_settings:        JESD204B settings

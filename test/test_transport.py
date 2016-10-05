@@ -1,10 +1,10 @@
 import unittest
 from math import ceil
 
-from litex.gen import *
+from migen import *
 
-from litejesd204b.common import *
-from litejesd204b.transport import LiteJESD204BTransportTX
+from jesd204b.common import *
+from jesd204b.transport import JESD204BTransportTX
 
 from test.model.transport import samples_to_lanes
 
@@ -16,7 +16,7 @@ class TestTransport(unittest.TestCase):
         ts = JESD204BTransportSettings(f=2, s=1, k=16, cs=1)
         jesd_settings = JESD204BSettings(ps, ts, did=0x5a, bid=0x5)
 
-        transport = LiteJESD204BTransportTX(jesd_settings,
+        transport = JESD204BTransportTX(jesd_settings,
                                             converter_data_width)
 
         input_samples = [[j+i*256 for j in range(16)]

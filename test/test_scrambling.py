@@ -1,8 +1,8 @@
 import unittest
 
-from litex.gen import *
+from migen import *
 
-from litejesd204b.link import Scrambler
+from jesd204b.link import Scrambler
 
 from test.model.common import swap_bytes, seed_to_data
 from test.model.link import Scrambler as ScramblerModel

@@ -1,18 +1,18 @@
 from functools import reduce
 from operator import and_
 
-from litex.gen import *
-from litex.gen.genlib.cdc import MultiReg
-from litex.gen.genlib.fifo import AsyncFIFO
-from litex.gen.genlib.resetsync import AsyncResetSynchronizer
+from migen import *
+from migen.genlib.cdc import MultiReg
+from migen.genlib.fifo import AsyncFIFO
+from migen.genlib.resetsync import AsyncResetSynchronizer
 
-from litex.soc.interconnect.csr import *
+from misoc.interconnect.csr import *
 
-from litejesd204b.transport import LiteJESD204BTransportTX
-from litejesd204b.link import LiteJESD204BLinkTX
+from jesd204b.transport import JESD204BTransportTX
+from jesd204b.link import JESD204BLinkTX
 
 
-class LiteJESD204BCoreTX(Module):
+class JESD204BCoreTX(Module):
     def __init__(self, phys, jesd_settings, converter_data_width):
         self.enable = Signal()
         self.start = Signal()
@@ -30,7 +30,7 @@ class LiteJESD204BCoreTX(Module):
         self.specials += AsyncResetSynchronizer(self.cd_tx, ~ready)
 
         # transport layer
-        transport = LiteJESD204BTransportTX(jesd_settings,
+        transport = JESD204BTransportTX(jesd_settings,
                                             converter_data_width)
         transport = ClockDomainsRenamer("jesd_tx_core")(transport)
         self.submodules.transport = transport
@@ -48,7 +48,7 @@ class LiteJESD204BCoreTX(Module):
         self.links = links = []
         for i, phy in enumerate(phys):
             jesd_settings.lid = i
-            link = LiteJESD204BLinkTX(len(phy.data), jesd_settings)
+            link = JESD204BLinkTX(len(phy.data), jesd_settings)
             link = ClockDomainsRenamer(phy.gtx.cd_tx.name)(link)
             links.append(link)
             self.comb += [
@@ -79,7 +79,7 @@ class LiteJESD204BCoreTX(Module):
         self.specials +=  MultiReg(~self.cd_tx.rst, self.ready)
 
 
-class LiteJESD204BCoreTXControl(Module, AutoCSR):
+class JESD204BCoreTXControl(Module, AutoCSR):
     def __init__(self, core):
         self.enable = CSRStorage()
         self.ready = CSRStatus()
