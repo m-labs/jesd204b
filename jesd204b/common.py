@@ -89,12 +89,11 @@ class JESD204BTransportSettings:
 
 
 class JESD204BPhysicalSettings:
-    def __init__(self, l, m, n, np, sc):
+    def __init__(self, l, m, n, np):
         self.l = l
         self.m = m
         self.n = n
         self.np = np
-        self.sc = sc
 
         # only support subclass 1
         self.subclassv = 0b001
