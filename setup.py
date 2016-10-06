@@ -17,7 +17,7 @@ setup(
     author="Florent Kermarrec",
     author_email="florent@enjoy-digital.fr",
     url="http://enjoy-digital.fr",
-    download_url="https://github.com/m-labs/jesd204",
+    download_url="https://github.com/m-labs/jesd204b",
     test_suite="test",
     license="BSD",
     platforms=["Any"],
