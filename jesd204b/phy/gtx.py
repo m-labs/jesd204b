@@ -5,60 +5,137 @@ from jesd204b.phy.gtx_init import GTXInit
 from jesd204b.phy.line_coding import Encoder
 
 
-cpll_min_freq = 1.6*1e9
-cpll_max_freq = 3.3*1e9
+class GTXChannelPLL(Module):
+    min_vco_freq = 1.6e9
+    max_vco_freq = 3.3e9
+    n1_values = [4, 5]
+    n2_values = [1, 2, 3, 4, 5]
+    m_values = [1, 2]
+    d_values = [1, 2, 4, 8, 16]
 
-cpll_n1_values = [4, 5]
-cpll_n2_values = [1, 2, 3, 4, 5]
-cpll_m_values = [1, 2]
-cpll_d_values = [1, 2, 4, 8, 16]
+    def __init__(self, refclk, refclk_freq, linerate):
+        self.refclk = refclk
+        self.lock = Signal()
+        self.config = self.compute_config(refclk_freq, linerate)
 
+    @staticmethod
+    def compute_vco_freq(refclk_freq, n1, n2, m):
+        return refclk_freq*(n1*n2)/m
 
-def cpll_get_pll_freq(refclk_freq, n1, n2, m):
-    return refclk_freq*(n1*n2)/m
+    @staticmethod
+    def compute_linerate(vco_freq, d):
+        return vco_freq*2/d
 
-
-def cpll_get_line_rate(pll_freq, d):
-    return pll_freq*2/d
-
-
-class CPLLConfig:
-    def __init__(self, n1, n2, m, d):
-        self.n1 = n1
-        self.n2 = n2
-        self.m = m
-        self.d = d
-
-
-def cpll_get_config(refclk_freq, linerate):
-    # bruteforce config finder, returns the first valid config
-    valid_configs = []
-    for n1 in cpll_n1_values:
-        for n2 in cpll_n2_values:
-            for m in cpll_m_values:
-                for d in cpll_d_values:
-                    pll_freq = cpll_get_pll_freq(refclk_freq, n1, n2, m)
-                    if pll_freq < cpll_min_freq:
-                        break
-                    if pll_freq > cpll_max_freq:
-                        break
-                    if cpll_get_line_rate(pll_freq, d) != linerate:
-                        break
-                    return CPLLConfig(n1, n2, m, d)
-    msg = "No CPLL config found for {:3.2f} MHz refclk / {:3.2f} Gbps linerate."
-    raise ValueError(msg.format(refclk_freq/1e6, linerate/1e9))
+    @classmethod
+    def compute_config(cls, refclk_freq, linerate):
+        for n1 in cls.n1_values:
+            for n2 in cls.n2_values:
+                for m in cls.m_values:
+                    vco_freq = cls.compute_vco_freq(refclk_freq, n1, n2, m)
+                    if (vco_freq >= cls.min_vco_freq and
+                        vco_freq <= cls.max_vco_freq):
+                        for d in cls.d_values:
+                            if cls.compute_linerate(vco_freq, d) == linerate:
+                                return {"n1": n1, "n2": n2, "m": m, "d": d}
+        msg = "No config found for {:3.2f} MHz refclk / {:3.2f} Gbps linerate."
+        raise ValueError(msg.format(refclk_freq/1e6, linerate/1e9))
 
 
-class GTXTransmitter(Module):
-    def __init__(self, refclk, refclk_freq, tx_pads,
-            sys_clk_freq, linerate, cd_name):
-        self.prbs_config = Signal(4)
+class GTXQuadPLL(Module):
+    min_vco_freq_lower_band = 5.93e9
+    max_vco_freq_lower_band = 8e9
+    min_vco_freq_higher_band = 9.8e9
+    max_vco_freq_higher_band = 12.5e9
+    n_values = [16, 20, 32, 40, 64, 66, 80, 100]
+    fbdiv_ratios = {
+        16  : 1,
+        20  : 1,
+        32  : 1,
+        40  : 1,
+        64  : 1,
+        66  : 0,
+        80  : 1,
+        100 : 1
+    }
+    fbdivs = {
+        16  : 0b0000100000,
+        20  : 0b0000110000,
+        32  : 0b0001100000,
+        40  : 0b0010000000,
+        64  : 0b0011100000,
+        66  : 0b0101000000,
+        80  : 0b0100100000,
+        100 : 0b0101110000
+    }
+    m_values = [1, 2, 3, 4]
+    d_values = [1, 2, 4, 8, 16]
+
+    def __init__(self, refclk, refclk_freq, linerate):
+        self.clk = Signal()
+        self.refclk = Signal()
+        self.reset = Signal()
+        self.lock = Signal()
+        self.config = self.compute_config(refclk_freq, linerate)
 
         # # #
 
-        cpll_config = cpll_get_config(refclk_freq, linerate)
+        self.specials += \
+            Instance("GTXE2_COMMON",
+                p_QPLL_CFG=0x0680181 if self.config["vco_band"] == "higher" else
+                           0x06801c1,
+                p_QPLL_FBDIV=self.fbdivs[self.config["n"]],
+                p_QPLL_FBDIV_RATIO=self.fbdiv_ratios[self.config["n"]],
+                p_QPLL_REFCLK_DIV=self.config["m"],
+                i_GTREFCLK0=refclk,
+                i_QPLLRESET=self.reset,
+
+                o_QPLLOUTCLK=self.clk,
+                o_QPLLOUTREFCLK=self.refclk,
+                i_QPLLLOCKEN=1,
+                o_QPLLLOCK=self.lock,
+                i_QPLLREFCLKSEL=0b001
+            )
+
+    @staticmethod
+    def compute_vco_freq(refclk_freq, n, m):
+        return refclk_freq*n/m
+
+    @staticmethod
+    def compute_linerate(vco_freq, d):
+        return (vco_freq/2)*2/d
+
+    @classmethod
+    def compute_config(cls, refclk_freq, linerate):
+        for n in cls.n_values:
+            for m in cls.m_values:
+                vco_freq = cls.compute_vco_freq(refclk_freq, n, m)
+                vco_band = None
+                if (vco_freq >= cls.min_vco_freq_lower_band and
+                    vco_freq <= cls.max_vco_freq_lower_band):
+                    band = "lower"
+                if (vco_freq >= cls.min_vco_freq_higher_band and
+                    vco_freq <= cls.max_vco_freq_higher_band):
+                    vco_band = "higher"
+                if vco_band is not None:
+                    for d in cls.d_values:
+                        if cls.compute_linerate(vco_freq, d) == linerate:
+                            return {"n": n, "m": m, "d": d, "vco_band": vco_band}
+        msg = "No config found for {:3.2f} MHz refclk / {:3.2f} Gbps linerate."
+        raise ValueError(msg.format(refclk_freq/1e6, linerate/1e9))
+
+
+class GTXTransmitter(Module):
+    def __init__(self, pll, tx_pads, sys_clk_freq, cd_name):
+        self.prbs_config = Signal(4)
+        self.produce_square_wave = Signal()
+
+        # # #
+
+        use_cpll = isinstance(pll, GTXChannelPLL)
+        use_qpll = isinstance(pll, GTXQuadPLL)
 
         self.submodules.gtx_init = GTXInit(sys_clk_freq, False)
+        self.comb += self.gtx_init.plllock.eq(pll.lock)
 
         nwords = 40//10
 
@@ -84,22 +161,26 @@ class GTXTransmitter(Module):
 
                 # CPLL
                 p_CPLL_CFG=0xBC07DC,
-                p_CPLL_FBDIV=cpll_config.n2,
-                p_CPLL_FBDIV_45=cpll_config.n1,
-                p_CPLL_REFCLK_DIV=cpll_config.m,
-                p_RXOUT_DIV=cpll_config.d,
-                p_TXOUT_DIV=cpll_config.d,
-                o_CPLLLOCK=self.gtx_init.cplllock,
+                p_CPLL_FBDIV=1 if use_qpll else pll.config["n2"],
+                p_CPLL_FBDIV_45=4 if use_qpll else pll.config["n1"],
+                p_CPLL_REFCLK_DIV=1 if use_qpll else pll.config["m"],
+                p_RXOUT_DIV=pll.config["d"],
+                p_TXOUT_DIV=pll.config["d"],
+                o_CPLLLOCK=Signal() if use_qpll else pll.lock,
                 i_CPLLLOCKEN=1,
                 i_CPLLREFCLKSEL=0b001,
                 i_TSTIN=2**20-1,
-                i_GTREFCLK0=refclk,
+                i_GTREFCLK0=Signal() if use_qpll else pll.refclk,
+
+                # QPLL
+                i_QPLLCLK=Signal() if use_cpll else pll.clk,
+                i_QPLLREFCLK=Signal() if use_cpll else pll.refclk,
 
                 # TX clock
                 p_TXBUF_EN="FALSE",
                 p_TX_XCLK_SEL="TXUSR",
                 o_TXOUTCLK=txoutclk,
-                i_TXSYSCLKSEL=0b00,
+                i_TXSYSCLKSEL=0b11 if use_qpll else 0b00,
                 i_TXOUTCLKSEL=0b11,
 
                 # disable RX
@@ -142,4 +223,10 @@ class GTXTransmitter(Module):
             self.cd_tx, ~self.gtx_init.done)
 
         self.submodules.encoder = ClockDomainsRenamer(cd_name)(Encoder(nwords, True))
-        self.comb += txdata.eq(Cat(*[self.encoder.output[i] for i in range(nwords)]))
+        self.comb += \
+            If(self.produce_square_wave,
+                # square wave @ linerate/40 for scope observation
+                txdata.eq(0b1111111111111111111100000000000000000000)
+            ).Else(
+                txdata.eq(Cat(*[self.encoder.output[i] for i in range(nwords)]))
+            )
