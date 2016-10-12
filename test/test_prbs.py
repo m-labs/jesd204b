@@ -2,9 +2,9 @@ import unittest
 
 from migen import *
 
-from jesd204b.phy.prbs import PRBS7Generator
-from jesd204b.phy.prbs import PRBS15Generator
-from jesd204b.phy.prbs import PRBS31Generator
+from jesd204b.phy.prbs import (PRBS7Generator,
+                               PRBS15Generator,
+                               PRBS31Generator)
 
 from test.model.phy import PRBS7Generator as PRBS7GeneratorModel
 from test.model.phy import PRBS15Generator as PRBS15GeneratorModel
