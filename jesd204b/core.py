@@ -3,7 +3,6 @@ from operator import and_
 
 from migen import *
 from migen.genlib.cdc import MultiReg, ElasticBuffer
-from migen.genlib.resetsync import AsyncResetSynchronizer
 
 from misoc.interconnect.csr import *
 
@@ -26,17 +25,6 @@ class JESD204BCoreTX(Module):
 
         # # #
 
-        ready = Signal()
-
-        # clocking
-        # phys
-        for n, phy in enumerate(phys):
-            self.clock_domains.cd_phy = ClockDomain("phy"+str(n))
-            self.comb += [
-                self.cd_phy.clk.eq(phy.gtx.cd_tx.clk),
-                self.cd_phy.rst.eq(phy.gtx.cd_tx.rst)
-            ]
-
         # transport layer
         transport = JESD204BTransportTX(jesd_settings,
                                             converter_data_width)
@@ -53,39 +41,39 @@ class JESD204BCoreTX(Module):
                 transport.sink.eq(self.sink)
             )
 
-        # buffers
-        self.ebufs = ebufs = []
-        for n, phy in enumerate(phys):
-            ebuf = ElasticBuffer(len(phy.data), 8, "sys", "phy"+str(n))
-            ebufs.append(ebuf)
-            setattr(self.submodules, "ebuf"+str(n), ebuf)
+        links = []
+        for n, (phy, lane) in enumerate(zip(phys, transport.source.flatten())):
+            phy_name = "phy{}".format(n)
+            phy_cd = phy_name + "_tx"
 
-        # link layer
-        self.links = links = []
-        for n, phy in enumerate(phys):
+            # claim the phy
+            setattr(self.submodules, phy_name, phy)
+
+            ebuf = ElasticBuffer(len(phy.data), 8, "sys", phy_cd)
+            setattr(self.submodules, "ebuf{}".format(n), ebuf)
+
             link = JESD204BLinkTX(len(phy.data), jesd_settings, n)
-            link = ClockDomainsRenamer("phy"+str(n))(link)
+            link = ClockDomainsRenamer(phy_cd)(link)
             links.append(link)
             self.comb += link.start.eq(self.start)
             self.submodules += link
-        self.comb += ready.eq(reduce(and_, [link.ready for link in links]))
 
-        # connect modules together
-        for n, (link, ebuf) in enumerate(zip(links, ebufs)):
+            # connect data
             self.comb += [
-                ebuf.din.eq(getattr(transport.source, "lane"+str(n))),
+                ebuf.din.eq(lane),
                 link.sink.data.eq(ebuf.dout),
-                phys[n].data.eq(link.source.data),
-                phys[n].ctrl.eq(link.source.ctrl)
+                phy.data.eq(link.source.data),
+                phy.ctrl.eq(link.source.ctrl)
             ]
 
-        # control
-        for n, phy in enumerate(phys):
+            # connect control
             self.comb += phy.gtx.gtx_init.restart.eq(~self.enable)
             self.specials += MultiReg(self.prbs_config,
                                       phy.gtx.prbs_config,
-                                      "phy"+str(n))
-        self.specials +=  MultiReg(ready, self.ready)
+                                      phy_cd)
+        ready = Signal()
+        self.comb += ready.eq(reduce(and_, [link.ready for link in links]))
+        self.specials += MultiReg(ready, self.ready)
 
 
 class JESD204BCoreTXControl(Module, AutoCSR):
