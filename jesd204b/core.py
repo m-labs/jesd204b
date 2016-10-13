@@ -36,27 +36,18 @@ class JESD204BCoreTX(Module):
                 self.cd_phy.clk.eq(phy.gtx.cd_tx.clk),
                 self.cd_phy.rst.eq(phy.gtx.cd_tx.rst)
             ]
-        # user
-        self.clock_domains.cd_user = ClockDomain()
-        self.comb += self.cd_user.clk.eq(ClockSignal("phy0"))
-        self.specials += AsyncResetSynchronizer(self.cd_user, ~ready)
 
         # transport layer
         transport = JESD204BTransportTX(jesd_settings,
                                             converter_data_width)
-        transport = ClockDomainsRenamer("user")(transport)
         self.submodules.transport = transport
 
         # stpl
-        stpl_enable = Signal()
         stpl = JESD204BSTPLGenerator(jesd_settings,
                                          converter_data_width)
         self.submodules += stpl
-        self.specials += MultiReg(self.stpl_enable,
-                                  stpl_enable,
-                                  "user")
         self.comb += \
-            If(stpl_enable,
+            If(self.stpl_enable,
                 transport.sink.eq(stpl.source)
             ).Else(
                 transport.sink.eq(self.sink)
@@ -65,8 +56,8 @@ class JESD204BCoreTX(Module):
         # buffers
         self.ebufs = ebufs = []
         for n, phy in enumerate(phys):
-            ebuf = ElasticBuffer(len(phy.data), 8, "user", "phy"+str(n))
-            self.comb += ebuf.reset.eq(~ready)
+            ebuf = ElasticBuffer(len(phy.data), 8, "sys", "phy"+str(n))
+            self.comb += ebuf.reset.eq(~ready | ResetSignal("sys"))
             ebufs.append(ebuf)
             setattr(self.submodules, "ebuf"+str(n), ebuf)
 
@@ -95,7 +86,7 @@ class JESD204BCoreTX(Module):
             self.specials += MultiReg(self.prbs_config,
                                       phy.gtx.prbs_config,
                                       "phy"+str(n))
-        self.specials +=  MultiReg(~self.cd_user.rst, self.ready)
+        self.specials +=  MultiReg(ready, self.ready)
 
 
 class JESD204BCoreTXControl(Module, AutoCSR):
