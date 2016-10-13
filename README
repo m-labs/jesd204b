@@ -2,3 +2,35 @@
              Copyright 2016 / M-Labs Ltd
 
     A small footprint and configurable JESD204B core
+
+[> Features
+-----------
+PHY:
+ - PRBS7/PRBS15/PRBS31 to check link integrity.
+ - 8B/10B encoding
+ - 32 bits interface
+ - Kintex7 support (CPLL up to 5Gbps, QPLL for higher linerates)
+Core:
+ Link:
+  - Scrambling to reduce EMI
+  - Special characters insertion
+  - CGS/ILAS
+ Transport:
+  - converters <--> lanes mapping
+
+[> Possible improvements
+------------------------
+- add support for RX (ADC)
+- add support for non scrambled mode
+- add support for Altera PHYs
+- add support for Lattice PHYs
+- add support for Xilinx 7-Series/Ultrascale GTP/GTH (currently only 7-Series
+  GTX are supported)
+
+[> Tests
+--------
+Unit tests are available in ./test/.
+To run all the unit tests:
+  setup.py test
+Tests can also be run individually:
+  python3 -m unittest test.test_name
