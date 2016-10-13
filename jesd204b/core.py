@@ -57,7 +57,6 @@ class JESD204BCoreTX(Module):
         self.ebufs = ebufs = []
         for n, phy in enumerate(phys):
             ebuf = ElasticBuffer(len(phy.data), 8, "sys", "phy"+str(n))
-            self.comb += ebuf.reset.eq(~ready | ResetSignal("sys"))
             ebufs.append(ebuf)
             setattr(self.submodules, "ebuf"+str(n), ebuf)
 
