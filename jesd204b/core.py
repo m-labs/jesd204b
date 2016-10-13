@@ -78,7 +78,7 @@ class JESD204BCoreTX(Module):
             links.append(link)
             self.comb += link.start.eq(self.start)
             self.submodules += link
-        self.comb += ready.eq(reduce(or_, [link.ready for link in links]))
+        self.comb += ready.eq(reduce(and_, [link.ready for link in links]))
 
         # connect modules together
         for n, (link, ebuf) in enumerate(zip(links, ebufs)):
