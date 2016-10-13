@@ -2,7 +2,7 @@ from functools import reduce
 from operator import and_
 
 from migen import *
-from migen.genlib.cdc import MultiReg
+from migen.genlib.cdc import MultiReg, ElasticBuffer
 from migen.genlib.resetsync import AsyncResetSynchronizer
 
 from misoc.interconnect.csr import *
@@ -10,36 +10,6 @@ from misoc.interconnect.csr import *
 from jesd204b.transport import (JESD204BTransportTX,
                                 JESD204BSTPLGenerator)
 from jesd204b.link import JESD204BLinkTX
-
-
-class ElasticBuffer(Module):
-    def __init__(self, data_width, depth, initial_delay=0):
-        self.din = Signal(data_width)
-        self.dout = Signal(data_width)
-
-        # # #
-
-        wrpointer = Signal(max=depth, reset=initial_delay)
-        rdpointer = Signal(max=depth)
-
-        storage = Memory(data_width, depth)
-        self.specials += storage
-
-        wrport = storage.get_port(write_capable=True, clock_domain="write")
-        rdport = storage.get_port(clock_domain="read")
-        self.specials += wrport, rdport
-
-        self.sync.write += wrpointer.eq(wrpointer + 1)
-        self.sync.read += rdpointer.eq(rdpointer + 1)
-
-        self.comb += [
-            wrport.we.eq(1),
-            wrport.adr.eq(wrpointer),
-            wrport.dat_w.eq(self.din),
-
-            rdport.adr.eq(rdpointer),
-            self.dout.eq(rdport.dat_r)
-        ]
 
 
 class JESD204BCoreTX(Module):
@@ -66,9 +36,6 @@ class JESD204BCoreTX(Module):
                 self.cd_phy.clk.eq(phy.gtx.cd_tx.clk),
                 self.cd_phy.rst.eq(phy.gtx.cd_tx.rst)
             ]
-            self.clock_domains.cd_ebuf = ClockDomain("ebuf"+str(n))
-            self.comb += self.cd_ebuf.clk.eq(self.cd_phy.clk)
-            self.specials += AsyncResetSynchronizer(self.cd_ebuf, ~ready)
         # user
         self.clock_domains.cd_user = ClockDomain()
         self.comb += self.cd_user.clk.eq(ClockSignal("phy0"))
@@ -96,13 +63,12 @@ class JESD204BCoreTX(Module):
             )
 
         # buffers
-        self.bufs = bufs = []
+        self.ebufs = ebufs = []
         for n, phy in enumerate(phys):
-            buf = ElasticBuffer(len(phy.data), 8, 4)
-            buf = ClockDomainsRenamer(
-                {"write": "user", "read": "ebuf"+str(n)})(buf)
-            bufs.append(buf)
-            self.submodules += buf
+            ebuf = ElasticBuffer(len(phy.data), 8, "user", "phy"+str(n))
+            self.comb += ebuf.reset.eq(~ready)
+            ebufs.append(ebuf)
+            setattr(self.submodules, "ebuf"+str(n), ebuf)
 
         # link layer
         self.links = links = []
@@ -115,10 +81,10 @@ class JESD204BCoreTX(Module):
         self.comb += ready.eq(reduce(or_, [link.ready for link in links]))
 
         # connect modules together
-        for n, (link, buf) in enumerate(zip(links, bufs)):
+        for n, (link, ebuf) in enumerate(zip(links, ebufs)):
             self.comb += [
-                buf.din.eq(getattr(transport.source, "lane"+str(n))),
-                link.sink.data.eq(buf.dout),
+                ebuf.din.eq(getattr(transport.source, "lane"+str(n))),
+                link.sink.data.eq(ebuf.dout),
                 phys[n].data.eq(link.source.data),
                 phys[n].ctrl.eq(link.source.ctrl)
             ]
