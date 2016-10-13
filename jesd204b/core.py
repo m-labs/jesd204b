@@ -49,7 +49,7 @@ class JESD204BCoreTX(Module):
             # claim the phy
             setattr(self.submodules, phy_name, phy)
 
-            ebuf = ElasticBuffer(len(phy.data), 8, "sys", phy_cd)
+            ebuf = ElasticBuffer(len(phy.data), 4, "sys", phy_cd)
             setattr(self.submodules, "ebuf{}".format(n), ebuf)
 
             link = JESD204BLinkTX(len(phy.data), jesd_settings, n)
