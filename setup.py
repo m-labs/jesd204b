@@ -19,7 +19,7 @@ setup(
     url="http://enjoy-digital.fr",
     download_url="https://github.com/m-labs/jesd204b",
     test_suite="test",
-    license="BSD",
+    license="LGPLv3+",
     platforms=["Any"],
     keywords="HDL ASIC FPGA hardware design",
     classifiers=[
@@ -27,7 +27,7 @@ setup(
         "Environment :: Console",
         "Development Status :: Alpha",
         "Intended Audience :: Developers",
-        "License :: OSI Approved :: BSD License",
+        "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
     ],
