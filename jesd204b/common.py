@@ -101,7 +101,7 @@ class JESD204BPhysicalSettings:
         self.adjdir = 0
         self.phadj = 0
 
-        # jsed204b revision
+        # jesd204b revision
         self.jesdv = 0b001
 
 
