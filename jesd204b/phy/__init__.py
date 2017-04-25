@@ -2,6 +2,7 @@ from migen import *
 
 from jesd204b.common import *
 from jesd204b.phy.gtx import GTXTransmitter
+from jesd204b.phy.gth import GTHTransmitter
 
 
 class JESD204BPhyTX(Module):
@@ -12,7 +13,8 @@ class JESD204BPhyTX(Module):
         # # #
 
         transmitters = {
-            "gtx": GTXTransmitter
+            "gtx": GTXTransmitter,
+            "gth": GTHTransmitter
         }
         self.submodules.transmitter = transmitters[transceiver](
             pll=pll,
