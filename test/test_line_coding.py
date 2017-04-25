@@ -3,7 +3,7 @@ import random
 
 from migen import *
 
-from jesd204b.phy import line_coding
+from misoc.cores import code_8b10b as line_coding
 
 from test.model.line_coding import Control, encode_lanes
 

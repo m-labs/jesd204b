@@ -1,4 +1,4 @@
-from jesd204b.phy.line_coding import disparity
+from misoc.cores.code_8b10b import disparity
 
 from test.model.common import Control
 

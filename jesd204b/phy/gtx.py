@@ -1,8 +1,9 @@
 from migen import *
 from migen.genlib.resetsync import AsyncResetSynchronizer
 
+from misoc.cores.code_8b10b import Encoder
+
 from jesd204b.phy.gtx_init import GTXInit
-from jesd204b.phy.line_coding import Encoder
 
 
 class GTXChannelPLL(Module):
