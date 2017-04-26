@@ -15,7 +15,7 @@ from jesd204b.link import JESD204BLinkTX
 class JESD204BCoreTXWatchdog(Module):
     def __init__(self):
         self.enable = Signal()
-        self.start = Signal()
+        self.jsync = Signal()
         self.ready = Signal()
         self.prbs = Signal()
 
@@ -38,7 +38,7 @@ class JESD204BCoreTXWatchdog(Module):
         fsm.act("RUN",
             ready_timer.wait.eq(~self.ready),
              If(~self.enable |
-               (self.ready & ~self.start) |
+               (self.ready & ~self.jsync) |
                ready_timer.done,
                 NextState("INIT")
             )
@@ -48,7 +48,7 @@ class JESD204BCoreTXWatchdog(Module):
 class JESD204BCoreTX(Module):
     def __init__(self, phys, jesd_settings, converter_data_width):
         self.enable = Signal()
-        self.start = Signal()
+        self.jsync = Signal()
         self.ready = Signal()
 
         self.prbs_config = Signal(4)
@@ -63,7 +63,7 @@ class JESD204BCoreTX(Module):
         self.submodules.watchdog = watchdog = JESD204BCoreTXWatchdog()
         self.comb += [
             watchdog.enable.eq(self.enable),
-            watchdog.start.eq(self.start),
+            watchdog.jsync.eq(self.jsync),
             watchdog.ready.eq(self.ready),
             watchdog.prbs.eq(self.prbs_config != 0)
         ]
@@ -101,7 +101,7 @@ class JESD204BCoreTX(Module):
             link = JESD204BLinkTX(len(phy.data), jesd_settings, n)
             link = ClockDomainsRenamer(phy_cd)(link)
             links.append(link)
-            self.comb += link.start.eq(self.start)
+            self.comb += link.jsync.eq(self.jsync)
             self.submodules += link
 
             # connect data
