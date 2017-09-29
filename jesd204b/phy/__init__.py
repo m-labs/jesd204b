@@ -4,8 +4,10 @@ from jesd204b.common import *
 from jesd204b.phy.gtx import GTXTransmitter
 from jesd204b.phy.gth import GTHTransmitter
 
+from misoc.interconnect.csr import *
 
-class JESD204BPhyTX(Module):
+
+class JESD204BPhyTX(Module, AutoCSR):
     def __init__(self, pll, tx_pads, sys_clk_freq, transceiver="gtx"):
         self.data = Signal(32)
         self.ctrl = Signal(32//8)
