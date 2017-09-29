@@ -3,7 +3,6 @@ from math import ceil
 from migen import *
 from migen.genlib.cdc import MultiReg
 from migen.genlib.misc import WaitTimer
-from migen.genlib.fsm import FSM
 
 
 class GTXInit(Module):
