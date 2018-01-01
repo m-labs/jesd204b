@@ -76,8 +76,8 @@ class JESD204BCoreTX(Module):
             ]
 
             # connect control
-            self.comb += phy.transmitter.init.restart.eq(self.restart &
-            	                                         (self.prbs_config == 0))
+            self.comb += phy.transmitter.init.restart.eq(
+                    self.restart & (self.prbs_config == 0))
 
             self.specials += MultiReg(self.prbs_config,
                                       phy.transmitter.prbs_config,
