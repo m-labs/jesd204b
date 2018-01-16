@@ -235,6 +235,7 @@ class JESD204BLinkTX(Module):
     """
     def __init__(self, data_width, jesd_settings, n=0):
         self.jsync = Signal()
+        self.jref = Signal()
         self.ready = Signal()
 
         self.sink = sink = Record([("data", data_width)])
@@ -268,6 +269,17 @@ class JESD204BLinkTX(Module):
             inserter.sink.eq(framer.source)
         ]
 
+        jsync = Signal()
+        jref = Signal()
+        jref_d = Signal()
+        jref_rising = Signal()
+        self.sync += [
+            jsync.eq(self.jsync),
+            jref.eq(self.jref),
+            jref_d.eq(jref)
+        ]
+        self.comb += jref_rising.eq(self.jref & ~jref)
+
         # FSM
         self.submodules.fsm = fsm = FSM(reset_state="CGS")
 
@@ -278,7 +290,8 @@ class JESD204BLinkTX(Module):
             framer.reset.eq(1),
             source.data.eq(cgs.source.data),
             source.ctrl.eq(cgs.source.ctrl),
-            If(self.jsync,
+            # start ILAS on first LMFC after jsync is asserted
+            If(jsync & jref_rising,
                 NextState("ILAS")
             )
         )
