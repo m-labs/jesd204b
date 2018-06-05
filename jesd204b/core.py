@@ -51,7 +51,6 @@ class JESD204BCoreTX(Module):
                 transport.sink.eq(self.sink)
             )
 
-        ebufm = None
         links = []
         for n, (phy, lane) in enumerate(zip(phys, transport.source.flatten())):
             phy_name = "phy{}".format(n)
@@ -60,9 +59,9 @@ class JESD204BCoreTX(Module):
             # claim the phy
             setattr(self.submodules, phy_name, phy)
 
-            ebuf = ElasticBuffer(len(phy.data), 4, "sys", phy_cd, ebufm)
+            ebuf = ElasticBuffer(len(phy.data), 4, "sys", phy_cd)
             setattr(self.submodules, "ebuf{}".format(n), ebuf)
-            ebufm = ebuf if n == 0 else ebufm
+
             link = JESD204BLinkTX(len(phy.data), jesd_settings, n)
             link = ClockDomainsRenamer(phy_cd)(link)
             links.append(link)
