@@ -18,7 +18,6 @@ class GTHInit(Module):
         self.Xxdlysreset = Signal()
         self.Xxdlysresetdone = Signal()
         self.Xxphaligndone = Signal()
-        self.Xxuserrdy = Signal()
 
         # # #
 
@@ -37,11 +36,9 @@ class GTHInit(Module):
         # Deglitch FSM outputs driving transceiver asynch inputs
         gtXxreset = Signal()
         Xxdlysreset = Signal()
-        Xxuserrdy = Signal()
         self.sync += [
             self.gtXxreset.eq(gtXxreset),
             self.Xxdlysreset.eq(Xxdlysreset),
-            self.Xxuserrdy.eq(Xxuserrdy)
         ]
 
         # PLL reset must be at least 2us
@@ -85,24 +82,20 @@ class GTHInit(Module):
         # of gtXxreset)
         if rx:
             startup_fsm.act("RELEASE_GTH_RESET",
-                Xxuserrdy.eq(1),
                 cdr_stable_timer.wait.eq(1),
                 If(Xxresetdone & cdr_stable_timer.done, NextState("ALIGN"))
             )
         else:
             startup_fsm.act("RELEASE_GTH_RESET",
-                Xxuserrdy.eq(1),
                 If(Xxresetdone, NextState("ALIGN"))
             )
         # Start delay alignment (pulse)
         startup_fsm.act("ALIGN",
-            Xxuserrdy.eq(1),
             Xxdlysreset.eq(1),
             NextState("WAIT_ALIGN")
         )
         # Wait for delay alignment
         startup_fsm.act("WAIT_ALIGN",
-            Xxuserrdy.eq(1),
             If(Xxdlysresetdone,
                 NextState("WAIT_FIRST_ALIGN_DONE")
             )
@@ -110,14 +103,11 @@ class GTHInit(Module):
         # Wait 2 rising edges of Xxphaligndone
         # (from UG576 in TX Buffer Bypass in Single-Lane Auto Mode)
         startup_fsm.act("WAIT_FIRST_ALIGN_DONE",
-            Xxuserrdy.eq(1),
             If(Xxphaligndone_rising, NextState("WAIT_SECOND_ALIGN_DONE"))
         )
         startup_fsm.act("WAIT_SECOND_ALIGN_DONE",
-            Xxuserrdy.eq(1),
             If(Xxphaligndone_rising, NextState("READY"))
         )
         startup_fsm.act("READY",
-            Xxuserrdy.eq(1),
             self.done.eq(1)
         )

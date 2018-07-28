@@ -649,7 +649,7 @@ class GTHTransmitter(Module, AutoCSR):
             i_TXDLYSRESET=self.init.Xxdlysreset,
             o_TXDLYSRESETDONE=self.init.Xxdlysresetdone,
             o_TXPHALIGNDONE=self.init.Xxphaligndone,
-            i_TXUSERRDY=self.init.Xxuserrdy,
+            i_TXUSERRDY=1,
 
             # TX data
             i_TXCTRL0=Cat(*[txdata[10*i+8] for i in range(nwords)]),
