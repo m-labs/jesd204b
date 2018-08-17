@@ -35,17 +35,16 @@ class JESD204BCoreTX(Module):
         self.comb += self.restart.eq(~self.enable | (self.ready & ~jsync))
 
         # transport layer
-        transport = JESD204BTransportTX(jesd_settings,
-                                            converter_data_width)
+        transport = JESD204BTransportTX(jesd_settings, converter_data_width)
+        transport = ClockDomainsRenamer("jesd")(transport)
         self.submodules.transport = transport
 
         # stpl
-        stpl = JESD204BSTPLGenerator(jesd_settings,
-                                         converter_data_width)
+        stpl = JESD204BSTPLGenerator(jesd_settings, converter_data_width)
+        stpl = ClockDomainsRenamer("jesd")(stpl)
         self.submodules += stpl
         stpl_enable = Signal()
-        self.specials += \
-            MultiReg(self.stpl_enable, stpl_enable)
+        self.specials += MultiReg(self.stpl_enable, stpl_enable, "jesd")
         self.comb += \
             If(stpl_enable,
                 transport.sink.eq(stpl.source)
@@ -63,17 +62,18 @@ class JESD204BCoreTX(Module):
             # claim the phy
             setattr(self.submodules, phy_name, phy)
 
-            ebuf = ElasticBuffer(len(phy.data) + len(phy.ctrl), 4, "sys", phy_cd)
+            ebuf = ElasticBuffer(len(phy.data) + len(phy.ctrl), 4, "jesd", phy_cd)
             setattr(self.submodules, "ebuf{}".format(n), ebuf)
 
             link = JESD204BLinkTX(len(phy.data), jesd_settings, n)
+            link = ClockDomainsRenamer("jesd")(link)
+            self.submodules += link
             links.append(link)
             self.comb += [
                 link.reset.eq(link_reset),
                 link.jsync.eq(self.jsync),
                 link.jref.eq(self.jref)
             ]
-            self.submodules += link
 
             # connect data
             self.comb += [
@@ -93,7 +93,7 @@ class JESD204BCoreTX(Module):
                                       phy_cd)
         ready = Signal()
         self.comb += ready.eq(reduce(and_, [link.ready for link in links]))
-        self.specials += MultiReg(ready, self.ready, "sys")
+        self.specials += MultiReg(ready, self.ready)
 
     def register_jsync(self, jsync):
         self.jsync_registered = True
