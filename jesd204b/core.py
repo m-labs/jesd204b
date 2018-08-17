@@ -30,7 +30,9 @@ class JESD204BCoreTX(Module):
         # # #
 
         # restart when disabled or on re-synchronization request
-        self.comb += self.restart.eq(~self.enable | self.ready & ~self.jsync)
+        jsync = Signal()
+        self.specials += MultiReg(self.jsync, jsync, "sys")
+        self.comb += self.restart.eq(~self.enable | (self.ready & ~jsync))
 
         # transport layer
         transport = JESD204BTransportTX(jesd_settings,
