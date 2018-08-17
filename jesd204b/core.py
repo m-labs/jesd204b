@@ -91,7 +91,7 @@ class JESD204BCoreTX(Module):
                                       phy_cd)
         ready = Signal()
         self.comb += ready.eq(reduce(and_, [link.ready for link in links]))
-        self.specials += MultiReg(ready, self.ready)
+        self.specials += MultiReg(ready, self.ready, "sys")
 
     def register_jsync(self, jsync):
         self.jsync_registered = True
