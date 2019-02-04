@@ -30,9 +30,11 @@ class JESD204BCoreTX(Module):
         # # #
 
         # restart when disabled or on re-synchronization request
-        jsync = Signal()
-        self.specials += MultiReg(self.jsync, jsync, "sys")
-        self.comb += self.restart.eq(~self.enable | (self.ready & ~jsync))
+        self.jsync_sys = Signal()
+        self.specials += MultiReg(self.jsync, self.jsync_sys)
+        self.comb += self.restart.eq(~self.enable | (self.ready & ~self.jsync_sys))
+        self.jsync_jesd = Signal()
+        self.specials += MultiReg(self.jsync, self.jsync_jesd, "jesd")
 
         # transport layer
         transport = JESD204BTransportTX(jesd_settings, converter_data_width)
@@ -65,13 +67,13 @@ class JESD204BCoreTX(Module):
             ebuf = ElasticBuffer(len(phy.data) + len(phy.ctrl), 4, "jesd", phy_cd)
             setattr(self.submodules, "ebuf{}".format(n), ebuf)
 
-            link = JESD204BLinkTX(len(phy.data), jesd_settings, n)
-            link = ClockDomainsRenamer("jesd")(link)
+            link = ClockDomainsRenamer("jesd")(
+                JESD204BLinkTX(len(phy.data), jesd_settings, n))
             self.submodules += link
             links.append(link)
             self.comb += [
                 link.reset.eq(link_reset),
-                link.jsync.eq(self.jsync),
+                link.jsync.eq(self.jsync_jesd),
                 link.jref.eq(self.jref)
             ]
 
@@ -95,6 +97,7 @@ class JESD204BCoreTX(Module):
         self.comb += ready.eq(reduce(and_, [link.ready for link in links]))
         self.specials += MultiReg(ready, self.ready)
 
+    # JSYNC is asynchronous and the I/O can be passed directly to the core.
     def register_jsync(self, jsync):
         self.jsync_registered = True
         if isinstance(jsync, Signal):
@@ -104,14 +107,11 @@ class JESD204BCoreTX(Module):
         else:
             raise ValueError
 
+    # JREF needs to be sampled externally to the core, and needs to be
+    # synchronous to the jesd clock domain.
     def register_jref(self, jref):
         self.jref_registered = True
-        if isinstance(jref, Signal):
-            self.comb += self.jref.eq(jref)
-        elif isinstance(jref, Record):
-            self.specials += DifferentialInput(jref.p, jref.n, self.jref)
-        else:
-            raise ValueError
+        self.comb += self.jref.eq(jref)
 
     def do_finalize(self):
         assert hasattr(self, "jsync_registered")
@@ -139,9 +139,10 @@ class JESD204BCoreTXControl(Module, AutoCSR):
             core.prbs_config.eq(self.prbs_config.storage),
             core.stpl_enable.eq(self.stpl_enable.storage),
 
+            self.jsync.status.eq(core.jsync_sys),
+
             self.ready.status.eq(core.ready)
         ]
-        self.specials += MultiReg(core.jsync, self.jsync.status)
 
         # restart monitoring
 
@@ -161,5 +162,3 @@ class JESD204BCoreTXControl(Module, AutoCSR):
                 )
             )
         self.comb += self.restart_count.status.eq(restart_count)
-
-
