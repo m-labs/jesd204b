@@ -18,6 +18,7 @@ class JESD204BCoreTX(Module):
         self.enable = Signal()
         self.jsync = Signal()
         self.jref = Signal()
+        self.phy_done = Signal()
         self.ready = Signal()
         self.restart = Signal()
 
@@ -55,8 +56,8 @@ class JESD204BCoreTX(Module):
             )
 
         links = []
-        link_reset = Signal()
-        self.comb += link_reset.eq(~reduce(and_, [phy.transmitter.init.done for phy in phys]))
+        phy_done = Signal()
+        self.comb += phy_done.eq(reduce(and_, [phy.transmitter.init.done for phy in phys]))
         for n, (phy, lane) in enumerate(zip(phys, transport.source.flatten())):
             phy_name = "phy{}".format(n)
             phy_cd = phy_name + "_tx"
@@ -72,7 +73,7 @@ class JESD204BCoreTX(Module):
             self.submodules += link
             links.append(link)
             self.comb += [
-                link.reset.eq(link_reset),
+                link.reset.eq(~phy_done),
                 link.jsync.eq(self.jsync_jesd),
                 link.jref.eq(self.jref)
             ]
@@ -95,7 +96,10 @@ class JESD204BCoreTX(Module):
                                       phy_cd)
         ready = Signal()
         self.comb += ready.eq(reduce(and_, [link.ready for link in links]))
-        self.specials += MultiReg(ready, self.ready)
+        self.specials += [
+            MultiReg(phy_done, self.phy_done),
+            MultiReg(ready, self.ready)
+        ]
 
     # JSYNC is asynchronous and the I/O can be passed directly to the core.
     def register_jsync(self, jsync):
@@ -121,6 +125,7 @@ class JESD204BCoreTX(Module):
 class JESD204BCoreTXControl(Module, AutoCSR):
     def __init__(self, core):
         self.enable = CSRStorage()
+        self.phy_done = CSRStatus()
         self.ready = CSRStatus()
 
         self.prbs_config = CSRStorage(4)
@@ -141,6 +146,7 @@ class JESD204BCoreTXControl(Module, AutoCSR):
 
             self.jsync.status.eq(core.jsync_sys),
 
+            self.phy_done.status.eq(core.phy_done),
             self.ready.status.eq(core.ready)
         ]
 
