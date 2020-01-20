@@ -312,4 +312,5 @@ class JESD204BLinkTX(Module):
             ilas.reset.eq(1),
             self.ready.eq(1),
             source.eq(inserter.source),
+            If(~jsync, NextState("CGS"))
         )

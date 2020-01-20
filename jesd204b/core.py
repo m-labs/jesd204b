@@ -20,7 +20,6 @@ class JESD204BCoreTX(Module):
         self.jref = Signal()
         self.phy_done = Signal()
         self.ready = Signal()
-        self.restart = Signal()
 
         self.prbs_config = Signal(4)
         self.stpl_enable = Signal()
@@ -33,7 +32,6 @@ class JESD204BCoreTX(Module):
         # restart when disabled or on re-synchronization request
         self.jsync_sys = Signal()
         self.specials += MultiReg(self.jsync, self.jsync_sys)
-        self.comb += self.restart.eq(~self.enable | (self.ready & ~self.jsync_sys))
         self.jsync_jesd = Signal()
         self.specials += MultiReg(self.jsync, self.jsync_jesd, "jesd")
 
@@ -88,9 +86,7 @@ class JESD204BCoreTX(Module):
             ]
 
             # connect control
-            self.comb += phy.transmitter.init.restart.eq(
-                    self.restart & (self.prbs_config == 0))
-
+            self.comb += phy.transmitter.init.restart.eq(~self.enable)
             self.specials += MultiReg(self.prbs_config,
                                       phy.transmitter.prbs_config,
                                       phy_cd)
@@ -133,9 +129,6 @@ class JESD204BCoreTXControl(Module, AutoCSR):
 
         self.jsync = CSRStatus()
 
-        self.restart_count_clear = CSR()
-        self.restart_count = CSRStatus(8)
-
         # # #
 
         # core control/status
@@ -149,22 +142,3 @@ class JESD204BCoreTXControl(Module, AutoCSR):
             self.phy_done.status.eq(core.phy_done),
             self.ready.status.eq(core.ready)
         ]
-
-        # restart monitoring
-
-        # restart is a slow signal so we simply pass it to sys_clk and
-        # count rising edges
-        restart = Signal()
-        restart_d = Signal()
-        restart_count = Signal(8)
-        self.specials += MultiReg(core.restart, restart)
-        self.sync += \
-            If(self.restart_count_clear.re,
-                restart_count.eq(0)
-            ).Elif(restart & ~restart_d,
-                # don't overflow when max is reached
-                If(restart_count != (2**8-1),
-                    restart_count.eq(restart_count + 1)
-                )
-            )
-        self.comb += self.restart_count.status.eq(restart_count)
