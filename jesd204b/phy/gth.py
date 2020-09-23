@@ -197,7 +197,7 @@ CLKIN +----> /M  +-->       Charge Pump         | +------------+->/2+--> CLKOUT
 
 
 class GTHTransmitter(Module, AutoCSR):
-    def __init__(self, pll, tx_pads, sys_clk_freq, polarity=0):
+    def __init__(self, pll, refclk, tx_pads, sys_clk_freq, polarity=0):
         self.prbs_config = Signal(2)
 
         self.produce_square_wave = CSRStorage()
@@ -626,7 +626,7 @@ class GTHTransmitter(Module, AutoCSR):
             i_CPLLLOCKEN=1,
             i_CPLLREFCLKSEL=0b001,
             i_TSTIN=2**20-1,
-            i_GTREFCLK0=0 if (use_qpll0 | use_qpll1) else pll.refclk,
+            i_GTREFCLK0=refclk,
 
             # QPLL
             i_QPLL0CLK=0 if (use_cpll | use_qpll1) else pll.clk,
