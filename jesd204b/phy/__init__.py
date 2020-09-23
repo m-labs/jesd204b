@@ -8,7 +8,7 @@ from misoc.interconnect.csr import *
 
 
 class JESD204BPhyTX(Module, AutoCSR):
-    def __init__(self, pll, tx_pads, sys_clk_freq, transceiver="gtx"):
+    def __init__(self, pll, refclk, tx_pads, sys_clk_freq, transceiver="gtx"):
         self.data = Signal(32)
         self.ctrl = Signal(32//8)
 
@@ -20,6 +20,7 @@ class JESD204BPhyTX(Module, AutoCSR):
         }
         self.submodules.transmitter = transmitters[transceiver](
             pll=pll,
+            refclk=refclk,
             tx_pads=tx_pads,
             sys_clk_freq=sys_clk_freq
         )
