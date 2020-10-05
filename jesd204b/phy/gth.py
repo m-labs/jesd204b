@@ -8,6 +8,15 @@ from jesd204b.phy.gth_init import GTHInit
 from jesd204b.phy.prbs import *
 
 
+def _compute_clk25_div(refclk_freq):
+    # For integer DIV in [1, 31]: (DIV-1)*25MHz <= refclk_freq <= DIV*25MHz
+    for i in range(1, 32):
+        if refclk_freq <= i*25e6:
+            return i
+    # For integer DIV == 32: 775MHz <= refclk_freq <= 820MHz
+    return 32
+
+
 class GTHChannelPLL(Module):
     def __init__(self, refclk, refclk_freq, linerate):
         self.refclk = refclk
@@ -28,7 +37,8 @@ class GTHChannelPLL(Module):
                                 return {"n1": n1, "n2": n2, "m": m, "d": d,
                                         "vco_freq": vco_freq,
                                         "clkin": refclk_freq,
-                                        "linerate": linerate}
+                                        "linerate": linerate,
+                                        "clk25_div": _compute_clk25_div(refclk_freq)}
         msg = "No config found for {:3.2f} MHz refclk / {:3.2f} Gbps linerate."
         raise ValueError(msg.format(refclk_freq/1e6, linerate/1e9))
 
@@ -149,7 +159,8 @@ class GTHQuadPLL(Module):
                                     "qpll": qpll,
                                     "clkin": refclk_freq,
                                     "clkout": vco_freq/2,
-                                    "linerate": linerate}
+                                    "linerate": linerate,
+                                    "clk25_div": _compute_clk25_div(refclk_freq)}
         msg = "No config found for {:3.2f} MHz refclk / {:3.2f} Gbps linerate."
         raise ValueError(msg.format(refclk_freq/1e6, linerate/1e9))
 
@@ -508,7 +519,7 @@ class GTHTransmitter(Module, AutoCSR):
             p_RX_BIAS_CFG0                   =0b0000101010110100,
             p_RX_BUFFER_CFG                  =0b000000,
             p_RX_CAPFF_SARC_ENB              =0b0,
-            p_RX_CLK25_DIV                   =5,
+            p_RX_CLK25_DIV                   =pll.config["clk25_div"],
             p_RX_CLKMUX_EN                   =0b1,
             p_RX_CLK_SLIP_OVRD               =0b00000,
             p_RX_CM_BUF_CFG                  =0b1010,
@@ -607,7 +618,7 @@ class GTHTransmitter(Module, AutoCSR):
             p_TXSYNC_MULTILANE               =0,
             p_TXSYNC_OVRD                    =0b0,
             p_TXSYNC_SKIP_DA                 =0b0,
-            p_TX_CLK25_DIV                   =5,
+            p_TX_CLK25_DIV                   =pll.config["clk25_div"],
             p_TX_CLKMUX_EN                   =0b1,
             p_TX_DATA_WIDTH                  =80 if tx_half else 40,
             p_TX_DCD_CFG                     =0b000010,
