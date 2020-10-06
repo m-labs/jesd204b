@@ -72,64 +72,63 @@ CLKIN +----> /M  +-->       Charge Pump         +-> VCO +---> CLKOUT
 
 class GTHQuadPLL(Module):
     def __init__(self, refclk, refclk_freq, linerate):
-        self.clk = Signal()
-        self.refclk = Signal()
         self.reset = Signal()
         self.lock = Signal()
         self.config = self.compute_config(refclk_freq, linerate)
 
-        # # #
+    @staticmethod
+    def get_gthe3_common(refclk, refclk_freq, linerate, qpll_clk, qpll_refclk, qpll_reset=0, qpll_lock=0):
+        qpll_config = __class__.compute_config(refclk_freq, linerate)
+        
+        return Instance("GTHE3_COMMON",
+            # common
+            i_GTREFCLK00=refclk,
+            i_GTREFCLK01=refclk,
+            i_QPLLRSVD1=0,
+            i_QPLLRSVD2=0,
+            i_QPLLRSVD3=0,
+            i_QPLLRSVD4=0,
+            i_BGBYPASSB=1,
+            i_BGMONITORENB=1,
+            i_BGPDB=1,
+            i_BGRCALOVRD=0b11111,
+            i_BGRCALOVRDENB=0b1,
+            i_RCALENB=1,
 
-        self.specials += \
-            Instance("GTHE3_COMMON",
-                # common
-                i_GTREFCLK00=refclk,
-                i_GTREFCLK01=refclk,
-                i_QPLLRSVD1=0,
-                i_QPLLRSVD2=0,
-                i_QPLLRSVD3=0,
-                i_QPLLRSVD4=0,
-                i_BGBYPASSB=1,
-                i_BGMONITORENB=1,
-                i_BGPDB=1,
-                i_BGRCALOVRD=0b11111,
-                i_BGRCALOVRDENB=0b1,
-                i_RCALENB=1,
+            # qpll0
+            p_QPLL0_FBDIV=qpll_config["n"],
+            p_QPLL0_REFCLK_DIV=qpll_config["m"],
+            i_QPLL0CLKRSVD0=0,
+            i_QPLL0CLKRSVD1=0,
+            i_QPLL0LOCKDETCLK=ClockSignal(),
+            i_QPLL0LOCKEN=1,
+            o_QPLL0LOCK=qpll_lock if qpll_config["qpll"] == "qpll0" else
+                        Signal(),
+            o_QPLL0OUTCLK=qpll_clk if qpll_config["qpll"] == "qpll0" else
+                          Signal(),
+            o_QPLL0OUTREFCLK=qpll_refclk if qpll_config["qpll"] == "qpll0" else
+                             Signal(),
+            i_QPLL0PD=0 if qpll_config["qpll"] == "qpll0" else 1,
+            i_QPLL0REFCLKSEL=0b001,
+            i_QPLL0RESET=qpll_reset,
 
-                # qpll0
-                p_QPLL0_FBDIV=self.config["n"],
-                p_QPLL0_REFCLK_DIV=self.config["m"],
-                i_QPLL0CLKRSVD0=0,
-                i_QPLL0CLKRSVD1=0,
-                i_QPLL0LOCKDETCLK=ClockSignal(),
-                i_QPLL0LOCKEN=1,
-                o_QPLL0LOCK=self.lock if self.config["qpll"] == "qpll0" else
-                            Signal(),
-                o_QPLL0OUTCLK=self.clk if self.config["qpll"] == "qpll0" else
-                              Signal(),
-                o_QPLL0OUTREFCLK=self.refclk if self.config["qpll"] == "qpll0" else
-                                 Signal(),
-                i_QPLL0PD=0 if self.config["qpll"] == "qpll0" else 1,
-                i_QPLL0REFCLKSEL=0b001,
-                i_QPLL0RESET=self.reset,
-
-                # qpll1
-                p_QPLL1_FBDIV=self.config["n"],
-                p_QPLL1_REFCLK_DIV=self.config["m"],
-                i_QPLL1CLKRSVD0=0,
-                i_QPLL1CLKRSVD1=0,
-                i_QPLL1LOCKDETCLK=ClockSignal(),
-                i_QPLL1LOCKEN=1,
-                o_QPLL1LOCK=self.lock if self.config["qpll"] == "qpll1" else
-                            Signal(),
-                o_QPLL1OUTCLK=self.clk if self.config["qpll"] == "qpll1" else
-                              Signal(),
-                o_QPLL1OUTREFCLK=self.refclk if self.config["qpll"] == "qpll1" else
-                                 Signal(),
-                i_QPLL1PD=0 if self.config["qpll"] == "qpll1" else 1,
-                i_QPLL1REFCLKSEL=0b001,
-                i_QPLL1RESET=self.reset,
-             )
+            # qpll1
+            p_QPLL1_FBDIV=qpll_config["n"],
+            p_QPLL1_REFCLK_DIV=qpll_config["m"],
+            i_QPLL1CLKRSVD0=0,
+            i_QPLL1CLKRSVD1=0,
+            i_QPLL1LOCKDETCLK=ClockSignal(),
+            i_QPLL1LOCKEN=1,
+            o_QPLL1LOCK=qpll_lock if qpll_config["qpll"] == "qpll1" else
+                        Signal(),
+            o_QPLL1OUTCLK=qpll_clk if qpll_config["qpll"] == "qpll1" else
+                          Signal(),
+            o_QPLL1OUTREFCLK=qpll_refclk if qpll_config["qpll"] == "qpll1" else
+                             Signal(),
+            i_QPLL1PD=0 if qpll_config["qpll"] == "qpll1" else 1,
+            i_QPLL1REFCLKSEL=0b001,
+            i_QPLL1RESET=qpll_reset,
+         )
 
     @staticmethod
     def compute_config(refclk_freq, linerate):
@@ -206,23 +205,55 @@ class GTHTransmitter(Module, AutoCSR):
         self.txmaincursor = CSRStorage(7, reset=80)
         self.txprecursor = CSRStorage(5)
         self.txpostcursor = CSRStorage(5)
+        
+        self.nwords = 40//10
+
+        self.txoutclk = Signal()
+        self.txdata = Signal(40)
+
+        self.ext_refclk = refclk
+        self.tx_pads = tx_pads
+        self.polarity = polarity
 
         # # #
+
+        self.submodules.init = GTHInit(sys_clk_freq, False)
+        self.comb += [
+            self.init.plllock.eq(pll.lock),
+            pll.reset.eq(self.init.pllreset),
+        ]
+
+        self.clock_domains.cd_tx = ClockDomain()
+        self.specials += Instance("BUFG_GT",
+            i_I=self.txoutclk, o_O=self.cd_tx.clk)
+        self.specials += AsyncResetSynchronizer(
+            self.cd_tx, ~self.init.done)
+
+        self.submodules.encoder = ClockDomainsRenamer("tx")(Encoder(self.nwords, True))
+        self.submodules.prbs = ClockDomainsRenamer("tx")(PRBSTX(40, True))
+        self.comb += [
+            self.prbs.config.eq(self.prbs_config),
+            self.prbs.i.eq(Cat(*[self.encoder.output[i] for i in range(self.nwords)])),
+            If(self.produce_square_wave.storage,
+                # square wave @ linerate/40 for scope observation
+                self.txdata.eq(0b1111111111111111111100000000000000000000)
+            ).Else(
+                self.txdata.eq(self.prbs.o)
+            )
+        ]
+
+    @staticmethod
+    def get_gthe3_channel(pll, gth_tx, qpll_clk=None, qpll_refclk=None):
+        assert isinstance(gth_tx, GTHTransmitter)
 
         use_cpll = isinstance(pll, GTHChannelPLL)
         use_qpll0 = isinstance(pll, GTHQuadPLL) and pll.config["qpll"] == "qpll0"
         use_qpll1 = isinstance(pll, GTHQuadPLL) and pll.config["qpll"] == "qpll1"
 
-        self.submodules.init = GTHInit(sys_clk_freq, False)
-        self.comb += [
-            self.init.plllock.eq(pll.lock),
-            pll.reset.eq(self.init.pllreset)
-        ]
+        assert (use_cpll or 
+            ((qpll_clk is not None) and 
+            (qpll_refclk is not None)))
 
-        nwords = 40//10
-
-        txoutclk = Signal()
-        txdata = Signal(40)
         gth_params = dict(
             p_ACJTAG_DEBUG_MODE              =0b0,
             p_ACJTAG_MODE                    =0b0,
@@ -621,21 +652,21 @@ class GTHTransmitter(Module, AutoCSR):
 
             # CPLL
             i_CPLLRESET=0,
-            i_CPLLPD=0 if (use_qpll0 | use_qpll1) else pll.reset,
+            i_CPLLPD=1 if (use_qpll0 | use_qpll1) else pll.reset,
             o_CPLLLOCK=Signal() if (use_qpll0 | use_qpll1) else pll.lock,
-            i_CPLLLOCKEN=1,
+            i_CPLLLOCKEN=1 if use_cpll else 0,
             i_CPLLREFCLKSEL=0b001,
             i_TSTIN=2**20-1,
-            i_GTREFCLK0=refclk,
+            i_GTREFCLK0=gth_tx.ext_refclk,
 
             # QPLL
-            i_QPLL0CLK=0 if (use_cpll | use_qpll1) else pll.clk,
-            i_QPLL0REFCLK=0 if (use_cpll | use_qpll1) else pll.refclk,
-            i_QPLL1CLK=0 if (use_cpll | use_qpll0) else pll.clk,
-            i_QPLL1REFCLK=0 if (use_cpll | use_qpll0) else pll.refclk,
+            i_QPLL0CLK=0 if (use_cpll | use_qpll1) else qpll_clk,
+            i_QPLL0REFCLK=0 if (use_cpll | use_qpll1) else qpll_refclk,
+            i_QPLL1CLK=0 if (use_cpll | use_qpll0) else qpll_clk,
+            i_QPLL1REFCLK=0 if (use_cpll | use_qpll0) else qpll_refclk,
 
             # TX clock
-            o_TXOUTCLK=txoutclk,
+            o_TXOUTCLK=gth_tx.txoutclk,
             i_TXSYSCLKSEL=0b00 if use_cpll else 0b10 if use_qpll0 else 0b11,
             i_TXPLLCLKSEL=0b00 if use_cpll else 0b11 if use_qpll0 else 0b10,
             i_TXOUTCLKSEL=0b11,
@@ -644,51 +675,32 @@ class GTHTransmitter(Module, AutoCSR):
             i_RXPD=0b11,
 
             # Startup/Reset
-            i_GTTXRESET=self.init.gtXxreset,
-            o_TXRESETDONE=self.init.Xxresetdone,
-            i_TXDLYSRESET=self.init.Xxdlysreset,
-            o_TXDLYSRESETDONE=self.init.Xxdlysresetdone,
-            o_TXPHALIGNDONE=self.init.Xxphaligndone,
+            i_GTTXRESET=gth_tx.init.gtXxreset,
+            o_TXRESETDONE=gth_tx.init.Xxresetdone,
+            i_TXDLYSRESET=gth_tx.init.Xxdlysreset,
+            o_TXDLYSRESETDONE=gth_tx.init.Xxdlysresetdone,
+            o_TXPHALIGNDONE=gth_tx.init.Xxphaligndone,
             i_TXUSERRDY=1,
 
             # TX data
-            i_TXCTRL0=Cat(*[txdata[10*i+8] for i in range(nwords)]),
-            i_TXCTRL1=Cat(*[txdata[10*i+9] for i in range(nwords)]),
-            i_TXDATA=Cat(*[txdata[10*i:10*i+8] for i in range(nwords)]),
-            i_TXUSRCLK=ClockSignal("tx"),
-            i_TXUSRCLK2=ClockSignal("tx"),
+            i_TXCTRL0=Cat(*[gth_tx.txdata[10*i+8] for i in range(gth_tx.nwords)]),
+            i_TXCTRL1=Cat(*[gth_tx.txdata[10*i+9] for i in range(gth_tx.nwords)]),
+            i_TXDATA=Cat(*[gth_tx.txdata[10*i:10*i+8] for i in range(gth_tx.nwords)]),
+            i_TXUSRCLK=gth_tx.cd_tx.clk,
+            i_TXUSRCLK2=gth_tx.cd_tx.clk,
 
             # TX electrical
             i_TXBUFDIFFCTRL=0b000,
-            i_TXDIFFCTRL=self.txdiffcttrl.storage,
-            i_TXMAINCURSOR=self.txmaincursor.storage,
-            i_TXPRECURSOR=self.txprecursor.storage,
-            i_TXPOSTCURSOR=self.txpostcursor.storage,
+            i_TXDIFFCTRL=gth_tx.txdiffcttrl.storage,
+            i_TXMAINCURSOR=gth_tx.txmaincursor.storage,
+            i_TXPRECURSOR=gth_tx.txprecursor.storage,
+            i_TXPOSTCURSOR=gth_tx.txpostcursor.storage,
 
             # Polarity
-            i_TXPOLARITY=polarity,
+            i_TXPOLARITY=gth_tx.polarity,
 
             # Pads
-            o_GTHTXP=tx_pads.txp,
-            o_GTHTXN=tx_pads.txn
+            o_GTHTXP=gth_tx.tx_pads.txp,
+            o_GTHTXN=gth_tx.tx_pads.txn
         )
-        self.specials += Instance("GTHE3_CHANNEL", **gth_params)
-
-        self.clock_domains.cd_tx = ClockDomain()
-        self.specials += Instance("BUFG_GT",
-            i_I=txoutclk, o_O=self.cd_tx.clk)
-        self.specials += AsyncResetSynchronizer(
-            self.cd_tx, ~self.init.done)
-
-        self.submodules.encoder = ClockDomainsRenamer("tx")(Encoder(nwords, True))
-        self.submodules.prbs = ClockDomainsRenamer("tx")(PRBSTX(40, True))
-        self.comb += [
-            self.prbs.config.eq(self.prbs_config),
-            self.prbs.i.eq(Cat(*[self.encoder.output[i] for i in range(nwords)])),
-            If(self.produce_square_wave.storage,
-                # square wave @ linerate/40 for scope observation
-                txdata.eq(0b1111111111111111111100000000000000000000)
-            ).Else(
-                txdata.eq(self.prbs.o)
-            )
-        ]
+        return Instance("GTHE3_CHANNEL", **gth_params)
