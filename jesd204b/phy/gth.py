@@ -72,8 +72,6 @@ CLKIN +----> /M  +-->       Charge Pump         +-> VCO +---> CLKOUT
 
 class GTHQuadPLL(Module):
     def __init__(self, refclk, refclk_freq, linerate):
-        self.reset = Signal()
-        self.lock = Signal()
         self.config = self.compute_config(refclk_freq, linerate)
 
     @staticmethod
@@ -218,10 +216,6 @@ class GTHTransmitter(Module, AutoCSR):
         # # #
 
         self.submodules.init = GTHInit(sys_clk_freq, False)
-        self.comb += [
-            self.init.plllock.eq(pll.lock),
-            pll.reset.eq(self.init.pllreset),
-        ]
 
         self.clock_domains.cd_tx = ClockDomain()
         self.specials += Instance("BUFG_GT",
@@ -704,3 +698,21 @@ class GTHTransmitter(Module, AutoCSR):
             o_GTHTXN=gth_tx.tx_pads.txn
         )
         return Instance("GTHE3_CHANNEL", **gth_params)
+
+
+class GTHTransmitterInterconnect(Module):
+    def __init__(self, pll_reset, pll_lock, gth_tx, gth_inits):
+        assert isinstance(gth_tx, GTHTransmitter)
+        assert isinstance(gth_inits, list) or isinstance(gth_inits, GTHInit)
+        if not isinstance(gth_inits, list):
+            gth_inits = [gth_inits]
+
+        pll_reset_ors = 0
+        for gth_init in gth_inits:
+            assert isinstance(gth_init, GTHInit)
+            # PLL lock
+            self.comb += gth_init.plllock.eq(pll_lock)
+            # PLL reset
+            pll_reset_ors |= gth_init.pllreset
+
+        self.comb += pll_reset.eq(pll_reset_ors)
