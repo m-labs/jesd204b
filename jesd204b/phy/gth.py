@@ -194,7 +194,9 @@ CLKIN +----> /M  +-->       Charge Pump         | +------------+->/2+--> CLKOUT
 
 
 class GTHTransmitter(Module, AutoCSR):
-    def __init__(self, pll, refclk, tx_pads, sys_clk_freq, polarity=0):
+    def __init__(self, pll, refclk, tx_pads, sys_clk_freq, polarity=0, tx_half=False):
+        self.tx_half = tx_half
+
         self.prbs_config = Signal(2)
 
         self.produce_square_wave = CSRStorage()
@@ -204,10 +206,10 @@ class GTHTransmitter(Module, AutoCSR):
         self.txprecursor = CSRStorage(5)
         self.txpostcursor = CSRStorage(5)
         
-        self.nwords = 40//10
+        self.nwords = (80 if tx_half else 40)//10
 
         self.txoutclk = Signal()
-        self.txdata = Signal(40)
+        self.txdata = Signal(80 if tx_half else 40)
 
         self.ext_refclk = refclk
         self.tx_pads = tx_pads
@@ -219,18 +221,24 @@ class GTHTransmitter(Module, AutoCSR):
 
         self.clock_domains.cd_tx = ClockDomain()
         self.specials += Instance("BUFG_GT",
-            i_I=self.txoutclk, o_O=self.cd_tx.clk)
+            i_I=self.txoutclk, o_O=self.cd_tx.clk, i_DIV=0)
         self.specials += AsyncResetSynchronizer(
             self.cd_tx, ~self.init.done)
+        
+        if tx_half:
+            self.clock_domains.cd_tx_half = ClockDomain()
+            self.specials += Instance("BUFG_GT", 
+                i_I=self.txoutclk, o_O=self.cd_tx_half.clk, i_DIV=1)
 
-        self.submodules.encoder = ClockDomainsRenamer("tx")(Encoder(self.nwords, True))
-        self.submodules.prbs = ClockDomainsRenamer("tx")(PRBSTX(40, True))
+        self.submodules.encoder = ClockDomainsRenamer("tx_half" if tx_half else "tx")(Encoder(self.nwords, True))
+        self.submodules.prbs = ClockDomainsRenamer("tx_half" if tx_half else "tx")(PRBSTX(80 if tx_half else 40, True))
+        waveform = 0b1111111111111111111100000000000000000000
         self.comb += [
             self.prbs.config.eq(self.prbs_config),
             self.prbs.i.eq(Cat(*[self.encoder.output[i] for i in range(self.nwords)])),
             If(self.produce_square_wave.storage,
                 # square wave @ linerate/40 for scope observation
-                self.txdata.eq(0b1111111111111111111100000000000000000000)
+                self.txdata.eq((waveform << 40 if tx_half else 0) | waveform)
             ).Else(
                 self.txdata.eq(self.prbs.o)
             )
@@ -243,6 +251,7 @@ class GTHTransmitter(Module, AutoCSR):
         use_cpll = isinstance(pll, GTHChannelPLL)
         use_qpll0 = isinstance(pll, GTHQuadPLL) and pll.config["qpll"] == "qpll0"
         use_qpll1 = isinstance(pll, GTHQuadPLL) and pll.config["qpll"] == "qpll1"
+        tx_half = gth_tx.tx_half
 
         assert (use_cpll or 
             ((qpll_clk is not None) and 
@@ -507,7 +516,7 @@ class GTHTransmitter(Module, AutoCSR):
             p_RX_CM_SEL                      =0b11,
             p_RX_CM_TRIM                     =0b1010,
             p_RX_CTLE3_LPF                   =0b00000001,
-            p_RX_DATA_WIDTH                  =40,
+            p_RX_DATA_WIDTH                  =80 if tx_half else 40,
             p_RX_DDI_SEL                     =0b000000,
             p_RX_DEFER_RESET_BUF_EN          ="TRUE",
             p_RX_DFELPM_CFG0                 =0b0110,
@@ -600,7 +609,7 @@ class GTHTransmitter(Module, AutoCSR):
             p_TXSYNC_SKIP_DA                 =0b0,
             p_TX_CLK25_DIV                   =5,
             p_TX_CLKMUX_EN                   =0b1,
-            p_TX_DATA_WIDTH                  =40,
+            p_TX_DATA_WIDTH                  =80 if tx_half else 40,
             p_TX_DCD_CFG                     =0b000010,
             p_TX_DCD_EN                      =0b0,
             p_TX_DEEMPH0                     =0b000000,
@@ -681,7 +690,7 @@ class GTHTransmitter(Module, AutoCSR):
             i_TXCTRL1=Cat(*[gth_tx.txdata[10*i+9] for i in range(gth_tx.nwords)]),
             i_TXDATA=Cat(*[gth_tx.txdata[10*i:10*i+8] for i in range(gth_tx.nwords)]),
             i_TXUSRCLK=gth_tx.cd_tx.clk,
-            i_TXUSRCLK2=gth_tx.cd_tx.clk,
+            i_TXUSRCLK2=gth_tx.cd_tx_half.clk if tx_half else gth_tx.cd_tx.clk,
 
             # TX electrical
             i_TXBUFDIFFCTRL=0b000,
