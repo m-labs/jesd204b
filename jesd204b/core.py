@@ -14,7 +14,7 @@ from jesd204b.link import JESD204BLinkTX
 
 
 class JESD204BCoreTX(Module):
-    def __init__(self, phys, jesd_settings, converter_data_width):
+    def __init__(self, phys, jesd_settings, converter_data_width, tx_half=False):
         self.enable = Signal()
         self.jsync = Signal()
         self.jref = Signal()
@@ -59,15 +59,21 @@ class JESD204BCoreTX(Module):
         for n, (phy, lane) in enumerate(zip(phys, transport.source.flatten())):
             phy_name = "phy{}".format(n)
             phy_cd = phy_name + "_tx"
+            phy_half_cd = phy_name + "_tx_half"
 
             # claim the phy
             setattr(self.submodules, phy_name, phy)
 
-            ebuf = ElasticBuffer(len(phy.data) + len(phy.ctrl), 4, "jesd", phy_cd)
+            ebuf = ElasticBuffer(
+                len(phy.data) + len(phy.ctrl), 
+                4, "jesd", phy_half_cd if tx_half else phy_cd
+            )
             setattr(self.submodules, "ebuf{}".format(n), ebuf)
 
             link = ClockDomainsRenamer("jesd")(
-                JESD204BLinkTX(len(phy.data), jesd_settings, n))
+                JESD204BLinkTX(len(phy.data), 
+                    jesd_settings, n)
+            )
             self.submodules += link
             links.append(link)
             self.comb += [
@@ -89,7 +95,7 @@ class JESD204BCoreTX(Module):
             self.comb += phy.transmitter.init.restart.eq(~self.enable)
             self.specials += MultiReg(self.prbs_config,
                                       phy.transmitter.prbs_config,
-                                      phy_cd)
+                                      phy_half_cd if tx_half else phy_cd)
         ready = Signal()
         self.comb += ready.eq(reduce(and_, [link.ready for link in links]))
         self.specials += [
