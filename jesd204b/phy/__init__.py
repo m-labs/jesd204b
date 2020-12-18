@@ -1,5 +1,4 @@
 from migen import *
-# from migen.genlib.cdc import Gearbox
 
 from jesd204b.common import *
 from jesd204b.phy.gtx import GTXTransmitter
