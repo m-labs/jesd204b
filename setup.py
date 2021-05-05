@@ -28,6 +28,6 @@ setup(
         "Programming Language :: Python",
     ],
     python_requires=">=3.3",
-    packages=find_packages(),
+    packages=find_packages(exclude=("test",)),
     include_package_data=True,
 )
