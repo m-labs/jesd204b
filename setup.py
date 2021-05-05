@@ -5,10 +5,6 @@ from setuptools import setup
 from setuptools import find_packages
 
 
-if sys.version_info[:3] < (3, 3):
-    raise SystemExit("You need Python 3.3+")
-
-
 setup(
     name="jesd204b",
     version="0.11",
@@ -31,6 +27,7 @@ setup(
         "Operating System :: OS Independent",
         "Programming Language :: Python",
     ],
+    python_requires=">=3.3",
     packages=find_packages(),
     include_package_data=True,
 )
